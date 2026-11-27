@@ -32,6 +32,18 @@ describe("SessionWatcher", () => {
     expect(assign).toHaveBeenCalledWith("/signin?reason=session-ended");
   });
 
+  it("returns to Sign in when the probe was redirected to Sign in", async () => {
+    stubFetch(() => {
+      const res = new Response("<html></html>", { status: 200 });
+      Object.defineProperty(res, "redirected", { value: true });
+      Object.defineProperty(res, "url", { value: "http://app.test/signin?reason=session-ended" });
+      return Promise.resolve(res);
+    });
+    render(<SessionWatcher />);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(assign).toHaveBeenCalledWith("/signin?reason=session-ended");
+  });
+
   it("ignores a 500", async () => {
     stubFetch(() => Promise.resolve(new Response(null, { status: 500 })));
     render(<SessionWatcher />);

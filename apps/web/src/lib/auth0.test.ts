@@ -51,6 +51,8 @@ describe("auth0 client", () => {
     const cookie = res.headers.get("set-cookie") ?? "";
     expect(cookie).toContain("bnts_signed_in=1");
     expect(cookie).toContain("Max-Age=120");
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toContain("SameSite=lax");
   });
 
   it("defaults to Organizations when no return target is given", async () => {

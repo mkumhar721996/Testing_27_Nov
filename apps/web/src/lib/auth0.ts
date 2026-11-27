@@ -12,7 +12,13 @@ export const auth0 = new Auth0Client({
     const base = context.appBaseUrl ?? process.env.APP_BASE_URL ?? "";
     if (error) return NextResponse.redirect(new URL("/signin?error=signin-failed", base));
     const response = NextResponse.redirect(new URL(context.returnTo || "/organizations", base));
-    response.cookies.set(SIGNED_IN_MARKER, "1", { maxAge: absoluteDuration, path: "/" });
+    response.cookies.set(SIGNED_IN_MARKER, "1", {
+      maxAge: absoluteDuration,
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
     return response;
   },
 });

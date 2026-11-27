@@ -7,7 +7,9 @@ const SESSION_ENDED_URL = "/signin?reason=session-ended";
 
 export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const response = await fetch(input, init);
-  if (response.status === 401) window.location.assign(SESSION_ENDED_URL);
+  // The middleware may bounce an expired session to Sign in; fetch follows that and reports a 200 page.
+  const bouncedToSignIn = response.redirected && new URL(response.url).pathname === "/signin";
+  if (response.status === 401 || bouncedToSignIn) window.location.assign(SESSION_ENDED_URL);
   return response;
 }
 

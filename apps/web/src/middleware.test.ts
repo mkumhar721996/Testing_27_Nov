@@ -45,6 +45,29 @@ describe("middleware", () => {
     }
   });
 
+  it("answers an API call after expiry with 401 instead of a redirect", async () => {
+    getSession.mockResolvedValue(null);
+    for (const cookie of ["bnts_signed_in=1", undefined]) {
+      const res = await middleware(request("/api/session", cookie));
+      expect(res.status).toBe(401);
+      expect(res.headers.get("location")).toBeNull();
+    }
+  });
+
+  it("clears the marker when an API call finds the session expired", async () => {
+    getSession.mockResolvedValue(null);
+    const res = await middleware(request("/api/session", "bnts_signed_in=1"));
+    expect(res.headers.get("set-cookie")).toContain("bnts_signed_in=;");
+  });
+
+  it("does not roll the session on the session probe", async () => {
+    getSession.mockResolvedValue({ user: { sub: "auth0|u1" } });
+    const { auth0 } = await import("@/lib/auth0");
+    vi.mocked(auth0.middleware).mockClear();
+    await middleware(request("/api/session", "bnts_signed_in=1"));
+    expect(auth0.middleware).not.toHaveBeenCalled();
+  });
+
   it("clears the marker on logout", async () => {
     const res = await middleware(request("/auth/logout", "bnts_signed_in=1"));
     expect(res.headers.get("set-cookie")).toContain("bnts_signed_in=;");

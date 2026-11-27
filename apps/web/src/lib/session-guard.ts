@@ -4,6 +4,7 @@ type AccessInput = { pathname: string; hasSession: boolean; hasMarker: boolean }
 
 export type AccessDecision =
   | { action: "allow" }
+  | { action: "unauthorized"; clearMarker: boolean }
   | { action: "redirect"; to: "/signin" | "/signin?reason=session-ended"; clearMarker: boolean };
 
 function isPublic(pathname: string): boolean {
@@ -12,6 +13,8 @@ function isPublic(pathname: string): boolean {
 
 export function resolveAccess({ pathname, hasSession, hasMarker }: AccessInput): AccessDecision {
   if (hasSession || isPublic(pathname)) return { action: "allow" };
+  // fetch() follows redirects and would see the Sign in page as a 200, so API paths get a real 401.
+  if (pathname.startsWith("/api/")) return { action: "unauthorized", clearMarker: hasMarker };
   return hasMarker
     ? { action: "redirect", to: "/signin?reason=session-ended", clearMarker: true }
     : { action: "redirect", to: "/signin", clearMarker: false };

@@ -25,6 +25,17 @@ describe("resolveAccess", () => {
     });
   });
 
+  it("answers an API path without a session with unauthorized, not a redirect", () => {
+    expect(resolveAccess({ pathname: "/api/session", hasSession: false, hasMarker: true })).toEqual({
+      action: "unauthorized",
+      clearMarker: true,
+    });
+    expect(resolveAccess({ pathname: "/api/x", hasSession: false, hasMarker: false })).toEqual({
+      action: "unauthorized",
+      clearMarker: false,
+    });
+  });
+
   it("sends a visitor who never signed in to plain Sign in", () => {
     expect(resolveAccess({ pathname: "/organizations", hasSession: false, hasMarker: false })).toEqual({
       action: "redirect",
