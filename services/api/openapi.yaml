@@ -1,0 +1,36 @@
+openapi: 3.1.0
+info:
+  title: Application API
+  version: 0.1.0
+paths:
+  /api/me:
+    get:
+      summary: The signed-in traveller's name and email
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The traveller, as held by the identity provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          description: Missing, expired or invalid Auth0 access token
+        "502":
+          description: The identity provider could not be reached
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Me:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
