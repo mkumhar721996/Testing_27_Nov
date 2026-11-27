@@ -1,0 +1,40 @@
+components:
+  comp_application_api:
+    mode: local
+    test_command: cd services/api && uv run --no-sync --offline pytest
+    build_command: cd services/api && sh scripts/build.sh
+    start_command: cd services/api && uv run --no-sync --offline uvicorn app.main:app
+      --host {host} --port {port}
+    devloop_command: cd services/api && uv run --no-sync --offline ruff check . &&
+      uv run --no-sync --offline pytest -q
+    port_env: COMP_APPLICATION_API_PORT
+    base_port: 8000
+    ready_check:
+      url: http://localhost:{port}/
+  comp_web_app:
+    mode: local
+    e2e_command: cd apps/web && pnpm e2e
+    test_command: cd apps/web && pnpm test
+    build_command: cd apps/web && pnpm build
+    start_command: cd apps/web && pnpm exec next dev --hostname {host} --port {port}
+    devloop_command: cd apps/web && pnpm devloop
+    port_env: COMP_WEB_APP_PORT
+    base_port: 8080
+    ready_check:
+      url: http://localhost:{port}/
+    primary: true
+commands:
+  test: (cd services/api && uv run --no-sync --offline pytest) && (cd apps/web &&
+    pnpm test)
+  build: (cd services/api && sh scripts/build.sh) && (cd apps/web && pnpm build)
+  devloop: (cd services/api && uv run --no-sync --offline ruff check . && uv run --no-sync
+    --offline pytest -q) && (cd apps/web && pnpm devloop)
+ui_tests:
+  framework: playwright
+  command: cd apps/web && pnpm exec playwright test
+setup_command: (cd apps/web && pnpm install --frozen-lockfile) && (cd services/api
+  && uv sync)
+toolchain:
+  node: '22'
+  pnpm: 12.9.1
+  python: '3.12'
