@@ -6,6 +6,7 @@ import {
   CABIN_OPTIONS,
   DIET_OPTIONS,
   SEAT_OPTIONS,
+  clearAccessToken,
   fetchProfile,
   saveProfile,
   validateDraft,
@@ -70,7 +71,10 @@ export function TravellerProfile() {
         <ProfileForm
           key={load.profile.email}
           initial={load.profile}
-          onSignOut={() => router.push("/sign-in")}
+          onSignOut={() => {
+            clearAccessToken();
+            router.push("/sign-in");
+          }}
         />
       )}
     </div>

@@ -24,6 +24,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // The sign-in item stores the Identity Provider's access token here after sign-in.
 const getAccessToken = () => sessionStorage.getItem("access_token");
+export const clearAccessToken = () => sessionStorage.removeItem("access_token");
 
 async function request(method: "GET" | "PUT", body?: ProfileDraft): Promise<Profile> {
   const response = await fetch(`${API_URL}/me/profile`, {

@@ -150,6 +150,13 @@ describe("TravellerProfile", () => {
     expect(push).toHaveBeenCalledWith("/sign-in");
   });
 
+  it("sign out discards the stored access token", async () => {
+    sessionStorage.setItem("access_token", "fake-token");
+    await open();
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(sessionStorage.getItem("access_token")).toBeNull();
+  });
+
   it("AC26 preferences are pick-lists", async () => {
     await open();
     for (const l of ["Preferred seat", "Preferred cabin", "Dietary needs"]) {
