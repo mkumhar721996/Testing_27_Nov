@@ -1,11 +1,14 @@
 // Fixed-window in-memory rate limiter and trusted-proxy-aware client IP lookup.
 // Per-instance only: a shared store is needed to enforce limits across replicas.
 
+const MAX_KEYS = 10_000;
 const hits = new Map<string, { count: number; resetAt: number }>();
 
 export function rateLimited(key: string, limit: number, windowMs: number, now = Date.now()) {
-  if (hits.size > 10_000) {
+  if (hits.size >= MAX_KEYS && !hits.has(key)) {
     for (const [k, v] of hits) if (v.resetAt <= now) hits.delete(k);
+    // Still full of live windows: evict the oldest so memory stays bounded.
+    while (hits.size >= MAX_KEYS) hits.delete(hits.keys().next().value as string);
   }
   const entry = hits.get(key);
   if (!entry || entry.resetAt <= now) {
@@ -18,6 +21,10 @@ export function rateLimited(key: string, limit: number, windowMs: number, now = 
 
 export function resetRateLimits() {
   hits.clear();
+}
+
+export function sizeForTest() {
+  return hits.size;
 }
 
 // Entries to the left of the last TRUSTED_PROXY_COUNT hops of X-Forwarded-For are

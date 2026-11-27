@@ -13,9 +13,12 @@ export async function POST(request: Request) {
   }
 
   const ip = clientIp(request);
+  // The email limit is scoped to the caller's IP so a third party cannot lock a victim out;
+  // without a trusted IP we rely on Auth0's own brute-force protection.
   if (
-    (ip && rateLimited(`sign-in:ip:${ip}`, IP_LIMIT, WINDOW_MS)) ||
-    rateLimited(`sign-in:email:${email.trim().toLowerCase()}`, EMAIL_LIMIT, WINDOW_MS)
+    ip &&
+    (rateLimited(`sign-in:ip:${ip}`, IP_LIMIT, WINDOW_MS) ||
+      rateLimited(`sign-in:ip-email:${ip}:${email.trim().toLowerCase()}`, EMAIL_LIMIT, WINDOW_MS))
   ) {
     return NextResponse.json(
       { code: "too_many_attempts" },

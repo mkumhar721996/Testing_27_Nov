@@ -122,6 +122,31 @@ describe("Sign in screen", () => {
   it("treats an unavailable Auth0 as a sign-in error", async () => {
     reply(502, { code: "unavailable" });
     fillSignIn();
-    expect(await screen.findByRole("alert")).toHaveTextContent("Sign-in failed.");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Sign-in failed.");
+    expect(alert).toHaveTextContent("try again in a moment");
+    expect(screen.queryByText("The email or password did not match an account.")).toBeNull();
+  });
+
+  it("tells the traveller to wait, not to check their details, when rate limited", async () => {
+    reply(429, { code: "too_many_attempts" });
+    fillSignIn();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Too many sign-in attempts");
+    expect(screen.queryByText("The email or password did not match an account.")).toBeNull();
+  });
+
+  it("moves between the tabs with the arrow keys", () => {
+    const signInTab = screen.getByRole("tab", { name: "Sign in" });
+    signInTab.focus();
+    fireEvent.keyDown(signInTab, { key: "ArrowRight" });
+    const createTab = screen.getByRole("tab", { name: "Create account", selected: true });
+    expect(createTab).toHaveFocus();
+    fireEvent.keyDown(createTab, { key: "ArrowLeft" });
+    expect(screen.getByRole("tab", { name: "Sign in", selected: true })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Sign in" }), { key: "End" });
+    expect(screen.getByRole("tab", { name: "Create account", selected: true })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Create account" }), { key: "Home" });
+    expect(screen.getByRole("tab", { name: "Sign in", selected: true })).toHaveFocus();
   });
 });

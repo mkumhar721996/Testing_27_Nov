@@ -1,11 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent, type InputHTMLAttributes } from "react";
+import {
+  useRef,
+  useState,
+  type FormEvent,
+  type InputHTMLAttributes,
+  type KeyboardEvent,
+} from "react";
 
 type Tab = "sign-in" | "sign-up";
 type View = "form" | "loading" | "error" | "unverified" | "sign-up-error" | "verify-email";
 type Errors = Partial<Record<"name" | "email" | "password", string>>;
+
+type Failure = "credentials" | "rate-limited" | "unavailable";
+
+const FAILURE_ALERT: Record<Failure, string> = {
+  credentials: "Sign-in failed. Check your details and try again.",
+  "rate-limited": "Too many sign-in attempts. Wait a few minutes, then try again.",
+  unavailable: "Sign-in failed. Auth0 is not responding, so try again in a moment.",
+};
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
@@ -57,6 +71,8 @@ export function SignInScreen() {
   const [view, setView] = useState<View>("form");
   const [errors, setErrors] = useState<Errors>({});
   const [email, setEmail] = useState("");
+  const [failure, setFailure] = useState<Failure>("credentials");
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   function show(next: Tab, nextView: View = "form") {
     setTab(next);
@@ -104,19 +120,45 @@ export function SignInScreen() {
       } else if (res.ok) {
         router.push("/profile");
       } else {
+        setFailure(
+          res.status === 429 ? "rate-limited" : res.status >= 500 ? "unavailable" : "credentials",
+        );
         setView(body.code === "email_not_verified" ? "unverified" : "error");
       }
     } catch {
+      setFailure("unavailable");
       setView(signUp ? "sign-up-error" : "error");
     }
+  }
+
+  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const last = TABS.length - 1;
+    const target =
+      event.key === "ArrowRight"
+        ? (index + 1) % TABS.length
+        : event.key === "ArrowLeft"
+          ? (index + last) % TABS.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? last
+              : null;
+    if (target === null) return;
+    event.preventDefault();
+    show(TABS[target].id);
+    tabRefs.current[target]?.focus();
   }
 
   return (
     <div className="card auth-card">
       <div className="tabs" role="tablist" aria-label="Account">
-        {TABS.map((t) => (
+        {TABS.map((t, i) => (
           <button
             key={t.id}
+            ref={(el) => {
+              tabRefs.current[i] = el;
+            }}
+            onKeyDown={(e) => onTabKeyDown(e, i)}
             type="button"
             role="tab"
             className="tab"
@@ -218,10 +260,10 @@ export function SignInScreen() {
       {view === "error" && (
         <div className="stack">
           <div className="alert alert-danger" role="alert">
-            Sign-in failed. Check your details and try again.
+            {FAILURE_ALERT[failure]}
           </div>
           <h1>Sign in to your account</h1>
-          <p>The email or password did not match an account.</p>
+          {failure === "credentials" && <p>The email or password did not match an account.</p>}
           <button type="button" className="btn btn-primary" onClick={() => show("sign-in")}>
             Try again
           </button>

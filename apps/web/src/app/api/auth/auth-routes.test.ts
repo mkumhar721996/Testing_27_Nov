@@ -88,14 +88,28 @@ describe("POST /api/auth/sign-in", () => {
     expect(fetchMock.mock.calls[0][1].headers["auth0-forwarded-for"]).toBe("203.0.113.7");
   });
 
-  it("returns 429 once an email exceeds the attempt limit, without calling Auth0", async () => {
+  const fromIp = (ip: string) => {
+    const r = req("/api/auth/sign-in", body);
+    r.headers.set("x-forwarded-for", ip);
+    return signIn(r);
+  };
+
+  it("returns 429 once an email from one IP exceeds the attempt limit, without calling Auth0", async () => {
     fetchMock.mockResolvedValue(json(403, { error: "invalid_grant" }));
-    for (let i = 0; i < 10; i++) await signIn(req("/api/auth/sign-in", body));
+    for (let i = 0; i < 10; i++) await fromIp("192.0.2.1");
     fetchMock.mockClear();
-    const res = await signIn(req("/api/auth/sign-in", body));
+    const res = await fromIp("192.0.2.1");
     expect(res.status).toBe(429);
     expect(await res.json()).toEqual({ code: "too_many_attempts" });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not let one IP lock the same email out for everyone else", async () => {
+    fetchMock.mockResolvedValue(json(403, { error: "invalid_grant" }));
+    for (let i = 0; i < 15; i++) await fromIp("192.0.2.1");
+    fetchMock.mockResolvedValue(json(200, { access_token: "fake-token", expires_in: 600 }));
+    const res = await fromIp("192.0.2.2");
+    expect(res.status).toBe(200);
   });
 
   it("returns 429 once an IP exceeds the attempt limit across different emails", async () => {
