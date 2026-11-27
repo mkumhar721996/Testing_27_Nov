@@ -4,6 +4,7 @@ components:
     name: Web App
     repo_ref: conn-github-54e8ad337f3e4aafb8003498a60d9f69
     kind: web_ui
+    directory: apps/web
     integrations:
     - to: comp_application_api
       interaction: sync
@@ -24,13 +25,24 @@ components:
     rule: End-user and admin screens ship in one Web App; admin screens are shown
       only to users with the admin role.
     adr: ADR-0001
+    stack:
+      choices:
+        styling: tailwindcss
+        language: typescript
+        framework: nextjs
+        package_manager: pnpm
+        testing_tool_e2e: playwright
+        testing_tool_unit: vitest
+      notes: Next.js 15 per approved architecture
   comp_application_api:
     name: Application API
     repo_ref: conn-github-54e8ad337f3e4aafb8003498a60d9f69
     kind: api_service
+    directory: services/api
     integrations:
     - to: comp_relational_database
       interaction: sync
+      via: postgresql
       status: planned
       evidence: API owns persistent application data
       label: SQL
@@ -53,6 +65,14 @@ components:
     rule: All Web App reads and writes go through the Application API, which enforces
       role checks on admin operations.
     adr: ADR-0002
+    stack:
+      choices:
+        database: postgresql
+        language: python
+        framework: fastapi
+        package_manager: uv
+        testing_tool_unit: pytest
+      notes: styling not applicable; e2e covered by Web App Playwright tests
   comp_relational_database:
     name: Relational Database
     repo_ref: conn-github-54e8ad337f3e4aafb8003498a60d9f69
@@ -60,6 +80,9 @@ components:
     zone: data
     rule: Only the Application API reads or writes the Relational Database.
     adr: ADR-0003
+    stack:
+      choices:
+        managed_service: PostgreSQL (self-hosted container)
   comp_cache:
     name: Cache
     repo_ref: conn-github-54e8ad337f3e4aafb8003498a60d9f69
@@ -68,6 +91,9 @@ components:
     rule: Only the Application API uses the Cache, and nothing stored there is the
       sole copy of persistent data.
     adr: ADR-0004
+    stack:
+      choices:
+        managed_service: Redis (self-hosted container)
   comp_identity_provider:
     name: Identity Provider
     repo_ref: conn-github-54e8ad337f3e4aafb8003498a60d9f69
@@ -84,3 +110,6 @@ components:
     rule: Sign-in and token issuing are done only by the managed Identity Provider;
       the Application API only validates its tokens.
     adr: ADR-0005
+    stack:
+      choices:
+        managed_service: Auth0
