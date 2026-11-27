@@ -1,1 +1,14 @@
 @import "tailwindcss";
+@import "../../design/tokens.css";
+@import "../../design/prototype-utils.css";
+
+.signin-page { min-height: 100vh; display: flex; flex-direction: column; background: var(--color-bg); }
+.signin-bar { display: flex; align-items: center; min-height: var(--header-height); padding: 0 var(--page-gutter); background: var(--color-surface); border-bottom: var(--border-width) solid var(--color-border); }
+.signin-logo { display: inline-flex; align-items: center; gap: var(--space-1); font-family: var(--font-family-heading); font-weight: var(--font-weight-heading); font-size: var(--font-size-lg); color: var(--color-fg); }
+.signin-mark { display: inline-grid; place-items: center; width: var(--control-height-sm); aspect-ratio: 1; border-radius: var(--radius-control); background: var(--color-primary); color: var(--color-on-primary); font-size: var(--font-size-sm); }
+.signin-main { flex: 1; display: grid; place-items: start center; padding: var(--space-7) var(--page-gutter) var(--space-9); }
+.signin-card { width: 100%; max-width: calc(var(--container-sm) * 0.6); }
+.signin-card h1 { margin: 0; font-size: var(--font-size-3xl); line-height: var(--line-height-tight); font-family: var(--font-family-heading); font-weight: var(--font-weight-heading); }
+.signin-card p { margin: 0; color: var(--color-fg-muted); }
+.signin-card .btn { width: 100%; justify-content: center; }
+.signin-note { font-size: var(--font-size-sm); color: var(--color-fg-faint); }

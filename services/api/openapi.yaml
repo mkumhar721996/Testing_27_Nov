@@ -1,0 +1,40 @@
+openapi: 3.1.0
+info:
+  title: Application API
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      summary: Liveness probe (unauthenticated)
+      responses:
+        "200":
+          description: Service is up
+  /me:
+    get:
+      summary: The signed-in user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The user's Auth0 subject and one of the four roles
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sub, role]
+                properties:
+                  sub:
+                    type: string
+                  role:
+                    type: string
+                    enum: [wfc_admin, fundraising_consultant, org_admin, org_staff]
+        "401":
+          description: Missing, invalid or expired token
+        "403":
+          description: Valid token without any of the four roles
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
