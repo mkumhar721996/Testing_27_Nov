@@ -1,1 +1,4 @@
 @import "tailwindcss";
+@import "../../design/tokens.css";
+@import "../../design/prototype-utils.css";
+@import "./auth.css";
