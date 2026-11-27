@@ -36,6 +36,19 @@ describe("Sign in page", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Your session ended.");
   });
 
+  it("shows the plain Sign in screen for no parameters or an unknown reason", async () => {
+    await renderPage({ reason: "anything-else" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+  });
+
+  it("shows the error rather than a notice when both are given", async () => {
+    await renderPage({ error: "signin-failed", reason: "session-ended" });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
   it("goes to Organizations when a session exists", async () => {
     getSession.mockResolvedValue({ user: { sub: "auth0|u1" } });
     await renderPage({});

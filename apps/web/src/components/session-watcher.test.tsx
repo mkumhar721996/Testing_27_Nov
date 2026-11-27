@@ -46,6 +46,47 @@ describe("SessionWatcher", () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
+  it("does not redirect while the session is still valid", async () => {
+    stubFetch(() => Promise.resolve(Response.json({ sub: "auth0|u1", role: "org_admin" })));
+    render(<SessionWatcher />);
+    await vi.advanceTimersByTimeAsync(180_000);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("probes straight away when the tab becomes visible", async () => {
+    stubFetch(() => Promise.resolve(new Response(null, { status: 401 })));
+    render(<SessionWatcher />);
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(assign).toHaveBeenCalledWith("/signin?reason=session-ended");
+  });
+
+  it("does not probe when the tab is hidden", async () => {
+    stubFetch(() => Promise.resolve(new Response(null, { status: 401 })));
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    render(<SessionWatcher />);
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetch).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it("stops polling after unmount", async () => {
+    stubFetch(() => Promise.resolve(new Response(null, { status: 401 })));
+    const { unmount } = render(<SessionWatcher />);
+    unmount();
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("apiFetch passes a successful response through without redirecting", async () => {
+    stubFetch(() => Promise.resolve(new Response("ok", { status: 200 })));
+    const res = await apiFetch("/api/anything");
+    expect(res.status).toBe(200);
+    expect(assign).not.toHaveBeenCalled();
+  });
+
   it("apiFetch redirects on a 401", async () => {
     stubFetch(() => Promise.resolve(new Response(null, { status: 401 })));
     const res = await apiFetch("/api/anything");
