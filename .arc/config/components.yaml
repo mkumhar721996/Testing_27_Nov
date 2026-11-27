@@ -1,0 +1,86 @@
+version: 2
+components:
+  comp_web_app:
+    name: Web App
+    repo_ref: conn-github-54e8ad337f3e4aafb8003498a60d9f69
+    kind: web_ui
+    integrations:
+    - to: comp_application_api
+      interaction: sync
+      via: http
+      status: planned
+      evidence: users access the platform through a responsive web interface
+      label: HTTPS/JSON
+    - to: comp_identity_provider
+      interaction: sync
+      via: http
+      auth:
+        scheme: oauth2
+        idp: comp_identity_provider
+      status: planned
+      evidence: OAuth 2.0 / JWT-based authentication; managed provider
+      label: OAuth sign-in
+    zone: client
+    rule: End-user and admin screens ship in one Web App; admin screens are shown
+      only to users with the admin role.
+    adr: ADR-0001
+  comp_application_api:
+    name: Application API
+    repo_ref: conn-github-54e8ad337f3e4aafb8003498a60d9f69
+    kind: api_service
+    integrations:
+    - to: comp_relational_database
+      interaction: sync
+      status: planned
+      evidence: API owns persistent application data
+      label: SQL
+    - to: comp_cache
+      interaction: sync
+      via: redis
+      status: planned
+      evidence: Redis for caching, session management
+      label: cache commands
+    - to: comp_identity_provider
+      interaction: sync
+      via: http
+      auth:
+        scheme: jwt
+        idp: comp_identity_provider
+      status: planned
+      evidence: JWT-based authentication; managed provider
+      label: token keys
+    zone: application
+    rule: All Web App reads and writes go through the Application API, which enforces
+      role checks on admin operations.
+    adr: ADR-0002
+  comp_relational_database:
+    name: Relational Database
+    repo_ref: conn-github-54e8ad337f3e4aafb8003498a60d9f69
+    kind: infrastructure
+    zone: data
+    rule: Only the Application API reads or writes the Relational Database.
+    adr: ADR-0003
+  comp_cache:
+    name: Cache
+    repo_ref: conn-github-54e8ad337f3e4aafb8003498a60d9f69
+    kind: infrastructure
+    zone: data
+    rule: Only the Application API uses the Cache, and nothing stored there is the
+      sole copy of persistent data.
+    adr: ADR-0004
+  comp_identity_provider:
+    name: Identity Provider
+    repo_ref: conn-github-54e8ad337f3e4aafb8003498a60d9f69
+    kind: managed_service
+    identity:
+      provider: auth0
+      hosting: managed
+      protocols:
+      - oauth2
+      - jwt
+      token: jwt
+      user_store: provider
+    zone: external
+    rule: Sign-in and token issuing are done only by the managed Identity Provider;
+      the Application API only validates its tokens.
+    adr: ADR-0005
