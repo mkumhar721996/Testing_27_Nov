@@ -159,3 +159,141 @@ describe("TravellerProfile", () => {
     expect(opts.map((o) => o.textContent)).toEqual(["No preference", ...api.SEAT_OPTIONS]);
   });
 });
+
+describe("TravellerProfile extra cases", () => {
+  it("keeps edits and shows an error when the save fails", async () => {
+    const name = await open();
+    vi.mocked(api.saveProfile).mockRejectedValue(new Error("down"));
+    type(name, "Zed");
+    fireEvent.click(save());
+    expect(await screen.findByText(/could not be saved/)).toBeInTheDocument();
+    expect(name).toHaveValue("Zed");
+    expect(save()).toBeEnabled();
+    expect(screen.queryByText("Your changes are saved.")).toBeNull();
+  });
+
+  it("disables Save and Cancel again after a successful save", async () => {
+    const name = await open();
+    vi.mocked(api.saveProfile).mockResolvedValue({ ...base, name: "Zed" });
+    type(name, "Zed");
+    fireEvent.click(save());
+    await screen.findByText("Your changes are saved.");
+    expect(save()).toBeDisabled();
+    expect(cancel()).toBeDisabled();
+  });
+
+  it("hides the success message when the traveller edits again", async () => {
+    const name = await open();
+    vi.mocked(api.saveProfile).mockResolvedValue({ ...base, name: "Zed" });
+    type(name, "Zed");
+    fireEvent.click(save());
+    await screen.findByText("Your changes are saved.");
+    type(name, "Zed2");
+    expect(screen.queryByText("Your changes are saved.")).toBeNull();
+  });
+
+  it("disables Cancel while saving", async () => {
+    const name = await open();
+    vi.mocked(api.saveProfile).mockReturnValue(new Promise(() => {}));
+    type(name, "Zed");
+    fireEvent.click(save());
+    await screen.findByRole("button", { name: "Saving…" });
+    expect(cancel()).toBeDisabled();
+  });
+
+  it("sends trimmed name and email", async () => {
+    const name = await open();
+    vi.mocked(api.saveProfile).mockResolvedValue(base);
+    type(name, "  Zed  ");
+    fireEvent.click(save());
+    await screen.findByText("Your changes are saved.");
+    expect(api.saveProfile).toHaveBeenCalledWith(expect.objectContaining({ name: "Zed" }));
+  });
+
+  it("choosing No preference clears the value and sends null", async () => {
+    await open();
+    vi.mocked(api.saveProfile).mockResolvedValue({ ...base, seat: null });
+    type(screen.getByLabelText("Preferred seat"), "");
+    fireEvent.click(save());
+    await screen.findByText("Your changes are saved.");
+    expect(api.saveProfile).toHaveBeenCalledWith(expect.objectContaining({ seat: null }));
+  });
+
+  it("flags an invalid email with the inline message and marks the field invalid", async () => {
+    await open();
+    const email = screen.getByLabelText("Email");
+    type(email, "not-an-email");
+    fireEvent.click(save());
+    expect(email).toHaveAttribute("aria-invalid", "true");
+    expect(email).toHaveAccessibleDescription(/Enter a valid email address\./);
+    expect(api.saveProfile).not.toHaveBeenCalled();
+  });
+
+  it("clears inline errors on Cancel", async () => {
+    const name = await open();
+    type(name, "");
+    fireEvent.click(save());
+    expect(screen.getByText("Enter your name.")).toBeInTheDocument();
+    fireEvent.click(cancel());
+    expect(screen.queryByText("Enter your name.")).toBeNull();
+  });
+
+  it("restores the other fields on Cancel too", async () => {
+    await open();
+    type(screen.getByLabelText("Email"), "other@example.com");
+    type(screen.getByLabelText("Dietary needs"), "Vegan");
+    fireEvent.click(cancel());
+    expect(screen.getByLabelText("Email")).toHaveValue("amara.okafor@example.com");
+    expect(screen.getByLabelText("Dietary needs")).toHaveValue("");
+  });
+
+  it("Add preferences form keeps the personal details card", async () => {
+    await open(empty);
+    fireEvent.click(screen.getByRole("button", { name: "Add preferences" }));
+    expect(screen.getByLabelText("Full name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Preferred cabin")).toBeInTheDocument();
+  });
+
+  it("does not show Save as enabled right after opening Add preferences", async () => {
+    await open(empty);
+    fireEvent.click(screen.getByRole("button", { name: "Add preferences" }));
+    expect(save()).toBeDisabled();
+  });
+
+  it("shows a single role badge for a traveller with one role", async () => {
+    await open();
+    const group = screen.getByRole("group", { name: "Your roles" });
+    expect(within(group).getAllByText(/Traveller|Admin/)).toHaveLength(1);
+  });
+
+  it("shows the loading skeleton before the profile arrives", () => {
+    vi.mocked(api.fetchProfile).mockReturnValue(new Promise(() => {}));
+    render(<TravellerProfile />);
+    expect(screen.getByLabelText("Loading your profile")).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByLabelText("Full name")).toBeNull();
+  });
+
+  it("shows the error again when Try again fails again", async () => {
+    vi.mocked(api.fetchProfile).mockRejectedValue(new Error("x"));
+    render(<TravellerProfile />);
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("could not be loaded");
+    expect(api.fetchProfile).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not offer sign out in the load error state's form fields", async () => {
+    vi.mocked(api.fetchProfile).mockRejectedValue(new Error("x"));
+    render(<TravellerProfile />);
+    await screen.findByRole("alert");
+    expect(screen.queryByLabelText("Full name")).toBeNull();
+  });
+
+  it("does not navigate when saving", async () => {
+    const name = await open();
+    vi.mocked(api.saveProfile).mockResolvedValue({ ...base, name: "Zed" });
+    type(name, "Zed");
+    fireEvent.click(save());
+    await screen.findByText("Your changes are saved.");
+    expect(push).not.toHaveBeenCalled();
+  });
+});
