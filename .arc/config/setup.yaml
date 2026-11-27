@@ -3,14 +3,13 @@ components:
     mode: local
     test_command: cd services/api && uv run --no-sync --offline pytest
     build_command: cd services/api && sh scripts/build.sh
-    start_command: cd services/api && uv run --no-sync --offline uvicorn app.main:app
-      --host {host} --port {port}
-    devloop_command: cd services/api && uv run --no-sync --offline ruff check . &&
-      uv run --no-sync --offline pytest -q
+    start_command: cd services/api && uv run --no-sync --offline uvicorn app.main:app --host {host} --port {port}
+    devloop_command: cd services/api && uv run --no-sync --offline ruff check . && uv run --no-sync --offline pytest -q
     port_env: COMP_APPLICATION_API_PORT
     base_port: 8000
     ready_check:
       url: http://localhost:{port}/
+    install_command: cd services/api && uv add {requirement}
   comp_web_app:
     mode: local
     e2e_command: cd apps/web && pnpm e2e
@@ -23,18 +22,20 @@ components:
     ready_check:
       url: http://localhost:{port}/
     primary: true
+    install_command: cd apps/web && pnpm add {name}@{version}
 commands:
-  test: (cd services/api && uv run --no-sync --offline pytest) && (cd apps/web &&
-    pnpm test)
+  test: (cd services/api && uv run --no-sync --offline pytest) && (cd apps/web && pnpm test)
   build: (cd services/api && sh scripts/build.sh) && (cd apps/web && pnpm build)
-  devloop: (cd services/api && uv run --no-sync --offline ruff check . && uv run --no-sync
-    --offline pytest -q) && (cd apps/web && pnpm devloop)
+  devloop: (cd services/api && uv run --no-sync --offline ruff check . && uv run --no-sync --offline pytest -q) && (cd apps/web && pnpm devloop)
+  test_fast_args: --lf --no-header
 ui_tests:
   framework: playwright
   command: cd apps/web && pnpm exec playwright test
-setup_command: (cd apps/web && pnpm install --frozen-lockfile) && (cd services/api
-  && uv sync)
+setup_command: (cd apps/web && pnpm install --frozen-lockfile) && (cd services/api && uv sync)
 toolchain:
   node: '22'
   pnpm: 12.9.1
   python: '3.12'
+package_install_commands:
+  pnpm: pnpm add {name}@{version}
+  uv: uv add {requirement}
