@@ -19,6 +19,10 @@ function TravellerScreen() {
 }
 
 describe("AdminOnly", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("shows nothing to a traveller without admin", () => {
     const { container } = render(adminArea(["traveller"]));
     expect(screen.queryByText("Admin area")).not.toBeInTheDocument();
@@ -39,10 +43,9 @@ describe("AdminOnly", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const { rerender } = render(adminArea(["traveller", "admin"]));
-    rerender(adminArea(["traveller", "admin"]));
+    rerender(adminArea(["traveller"]));
     expect(screen.getByText("Admin area")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
   });
 });
 
