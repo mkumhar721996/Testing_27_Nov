@@ -15,7 +15,9 @@ def read_profile(
     store: ProfileStore = Depends(get_store),
 ) -> ProfileOut:
     stored = store.get(user.user_id) or store.create(user.user_id, user.name, user.email)
-    return ProfileOut(**asdict(stored), roles=user.roles)
+    # model_construct: a token with a missing name or email claim must not turn into a 500
+    # on read; the traveller fixes it through PUT, which does validate.
+    return ProfileOut.model_construct(**asdict(stored), roles=user.roles)
 
 
 @router.put("/me/profile", response_model=ProfileOut)

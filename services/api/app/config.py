@@ -6,6 +6,10 @@ class Settings(BaseSettings):
 
     app_name: str = "comp_application_api"
     database_url: str = "postgresql://postgres:postgres@localhost:5432/app"
+    auth_issuer: str = ""
+    auth_audience: str = ""
+    auth_roles_claim: str = "roles"
+    web_origin: str = "http://localhost:3000"
 
 
 settings = Settings()

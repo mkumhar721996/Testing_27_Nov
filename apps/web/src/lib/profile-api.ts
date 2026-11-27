@@ -22,11 +22,16 @@ export const DIET_OPTIONS = [
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// The sign-in item stores the Identity Provider's access token here after sign-in.
+const getAccessToken = () => sessionStorage.getItem("access_token");
+
 async function request(method: "GET" | "PUT", body?: ProfileDraft): Promise<Profile> {
   const response = await fetch(`${API_URL}/me/profile`, {
     method,
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(getAccessToken() && { Authorization: `Bearer ${getAccessToken()}` }),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!response.ok) throw new Error(`Profile request failed with ${response.status}`);
