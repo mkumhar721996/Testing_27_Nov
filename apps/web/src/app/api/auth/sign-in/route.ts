@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { passwordSignIn } from "@/lib/auth0";
+import { clientIp, rateLimited } from "@/lib/rate-limit";
+
+const WINDOW_MS = 15 * 60 * 1000;
+const IP_LIMIT = 30;
+const EMAIL_LIMIT = 10;
 
 export async function POST(request: Request) {
   const { email, password } = await request.json().catch(() => ({}));
@@ -7,7 +12,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ code: "invalid_credentials" }, { status: 401 });
   }
 
-  const result = await passwordSignIn(email, password);
+  const ip = clientIp(request);
+  if (
+    (ip && rateLimited(`sign-in:ip:${ip}`, IP_LIMIT, WINDOW_MS)) ||
+    rateLimited(`sign-in:email:${email.trim().toLowerCase()}`, EMAIL_LIMIT, WINDOW_MS)
+  ) {
+    return NextResponse.json(
+      { code: "too_many_attempts" },
+      { status: 429, headers: { "retry-after": String(WINDOW_MS / 1000) } },
+    );
+  }
+
+  const result = await passwordSignIn(email, password, ip);
+
   switch (result.kind) {
     case "ok": {
       const res = NextResponse.json({ ok: true });

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimits } from "@/lib/rate-limit";
 import { POST as signIn } from "./sign-in/route";
 import { POST as signUp } from "./sign-up/route";
 
@@ -17,6 +18,7 @@ function json(status: number, body: unknown) {
 }
 
 beforeEach(() => {
+  resetRateLimits();
   vi.stubGlobal("fetch", fetchMock);
   vi.stubEnv("AUTH0_DOMAIN", "tenant.example.com");
   vi.stubEnv("AUTH0_CLIENT_ID", "fake-client-id");
@@ -76,6 +78,41 @@ describe("POST /api/auth/sign-in", () => {
     const res = await signIn(req("/api/auth/sign-in", body));
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ code: "unavailable" });
+  });
+
+  it("forwards the trusted client IP to Auth0 and ignores spoofed leading entries", async () => {
+    fetchMock.mockResolvedValue(json(200, { access_token: "fake-token", expires_in: 600 }));
+    const r = req("/api/auth/sign-in", body);
+    r.headers.set("x-forwarded-for", "6.6.6.6, 203.0.113.7");
+    await signIn(r);
+    expect(fetchMock.mock.calls[0][1].headers["auth0-forwarded-for"]).toBe("203.0.113.7");
+  });
+
+  it("returns 429 once an email exceeds the attempt limit, without calling Auth0", async () => {
+    fetchMock.mockResolvedValue(json(403, { error: "invalid_grant" }));
+    for (let i = 0; i < 10; i++) await signIn(req("/api/auth/sign-in", body));
+    fetchMock.mockClear();
+    const res = await signIn(req("/api/auth/sign-in", body));
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ code: "too_many_attempts" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 once an IP exceeds the attempt limit across different emails", async () => {
+    fetchMock.mockResolvedValue(json(403, { error: "invalid_grant" }));
+    const attempt = (i: number) => {
+      const r = req("/api/auth/sign-in", { email: `u${i}@example.com`, password: "test-password" });
+      r.headers.set("x-forwarded-for", "198.51.100.9");
+      return signIn(r);
+    };
+    for (let i = 0; i < 30; i++) await attempt(i);
+    expect((await attempt(99)).status).toBe(429);
+  });
+
+  it("does not report a non-credential Auth0 4xx as wrong credentials", async () => {
+    fetchMock.mockResolvedValue(json(401, { error: "unauthorized_client" }));
+    const res = await signIn(req("/api/auth/sign-in", body));
+    expect(res.status).toBe(502);
   });
 
   it("returns 401 invalid_credentials for a missing password without calling Auth0", async () => {

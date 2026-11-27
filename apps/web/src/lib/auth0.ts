@@ -24,28 +24,38 @@ function config() {
   };
 }
 
-function post(url: string, body: unknown) {
+function post(url: string, body: unknown, extraHeaders: Record<string, string> = {}) {
   return fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...extraHeaders },
     body: JSON.stringify(body),
   });
 }
 
-export async function passwordSignIn(email: string, password: string): Promise<SignInResult> {
+export async function passwordSignIn(
+  email: string,
+  password: string,
+  clientIp?: string | null,
+): Promise<SignInResult> {
   const c = config();
   if (!c) return { kind: "unavailable" };
   try {
-    const res = await post(`https://${c.domain}/oauth/token`, {
-      grant_type: PASSWORD_REALM_GRANT,
-      realm: c.connection,
-      username: email,
-      password,
-      audience: c.audience,
-      scope: "openid profile email",
-      client_id: c.clientId,
-      client_secret: c.clientSecret,
-    });
+    const res = await post(
+      `https://${c.domain}/oauth/token`,
+      {
+        grant_type: PASSWORD_REALM_GRANT,
+        realm: c.connection,
+        username: email,
+        password,
+        audience: c.audience,
+        scope: "openid profile email",
+        client_id: c.clientId,
+        client_secret: c.clientSecret,
+      },
+      // Lets Auth0's brute-force protection key on the end user, not this server.
+      clientIp ? { "auth0-forwarded-for": clientIp } : {},
+    );
+
     const data = await res.json().catch(() => ({}));
     if (res.ok && typeof data.access_token === "string") {
       return {
@@ -57,7 +67,8 @@ export async function passwordSignIn(email: string, password: string): Promise<S
     if (data.error === "access_denied" && UNVERIFIED_DESCRIPTION.test(data.error_description ?? "")) {
       return { kind: "email_not_verified" };
     }
-    if (res.status === 400 || res.status === 401 || res.status === 403) {
+    // Only a genuine credential rejection; other 4xx (bad client config, etc.) are not the user's fault.
+    if (data.error === "invalid_grant") {
       return { kind: "invalid_credentials" };
     }
     return { kind: "unavailable" };
